@@ -152,14 +152,7 @@ func findBlockID(containerData []byte, wanted string) (int, int, string) {
 
 	}
 
-	transactionSlice := containerData[:6]
-	transactionID := ""
-	for i := 0; i < 6; i++ {
-		subject := transactionSlice[i]
-		numVal := int(subject)
-		transactionID = transactionID + strconv.Itoa(numVal)
-	}
-	transactionID = `"` + transactionID + `"`
+	transactionID := makeContainerTypeID(containerData)
 
 	return (length - 31), found, transactionID
 }
@@ -288,16 +281,84 @@ func makeFindRelevantIDsCSV(blockID string, numEntries int) {
 
 }
 
+func makeContainerTypeID(contData []byte) string {
+	transactionSlice := contData[:6]
+	transactionID := ""
+	for i := 0; i < 6; i++ {
+		subject := transactionSlice[i]
+		numVal := int(subject)
+		transactionID = transactionID + strconv.Itoa(numVal)
+	}
+	return transactionID
+}
+
+func getBlockIDFromContainer(contData []byte) string {
+	transactionID := makeContainerTypeID(contData)
+
+	var slice []byte
+	switch transactionID {
+	case "000000":
+		length := len(contData)
+		check := []int{6, 68, 1253, 1321, 1344}
+		found := false
+		var blockID string
+		var oof error
+		for _, val := range check {
+			if (val + 32) < length {
+				slice = contData[val:(val + 32)]
+				blockID, oof = formatting.EncodeWithChecksum(formatting.CB58, slice)
+				if oof != nil {
+					fmt.Println("fatal error")
+					return "Encoding Unsuccessful"
+				}
+				resp := getBlock(blockID)
+				if resp.Block != nil {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			fmt.Println(`Block ID not found for ID "000000", Looking for BlockID Location`)
+			blockID = findAllValidBlockIDs(contData)
+			blockID = blockID[:(len(blockID) - 1)]
+			_, appearedAt, _ := findBlockID(contData, blockID)
+			fmt.Println("Block ID: ", blockID, " Found at Index: ", appearedAt)
+			return fmt.Sprintf("Block ID: %s Found at Index: %d", blockID, appearedAt)
+		}
+		return blockID
+	case "000001":
+		slice = contData[48:80]
+	case "000002":
+		slice = contData[6:38]
+	case "000004":
+		slice = contData[6:38]
+	default:
+		return fmt.Sprintln("Unknown Identifier: ", transactionID)
+	}
+	blockID, err := formatting.EncodeWithChecksum(formatting.CB58, slice)
+	if err != nil {
+		fmt.Println("fatal error")
+		return "Encoding Unsuccessful"
+	}
+
+	return blockID
+
+}
+
+func getBlockIDFromIndex(index float64) string {
+	_, container := decodeContainer(index)
+	return getBlockIDFromContainer(container.Bytes)
+}
+
 func main() {
 	// dc := "11Atn7rC6LxAVZ3Dyc8xxB8Uz3LMxzos6TjbojRsav3zcJECB919hqakKzUPUTdTiynWUfpMsL2j1nEbcW4WWP1ZkwG48R6DBvUX4s6MVsCm9CdtpU1WbpwSBiPrMKEsZaZkuheaqJdMMtCeyZ8EyFYvJNLMtwyaS43LTb"
 	// decodeUTXO(dc)
 
-	// fmt.Println("start sleeping")
-	// time.Sleep((5 * time.Second))
-	// fmt.Println("Awoken")
-
 	// makeBlockIDAtCSV("26HeCVKx9viUPp5EdkitRMB2tkdzF62dNW1snx9sZGe461m4V2", 100)
 	// makeFindRelevantIDsCSV("2HRsYbDTxyxsE9FXgyw6ZtLSzRjNgdSCXxe85kpTwAcVenrv12", 1)
-	makeBlockIDAtCSV("GhZVPpopX84JrKiNNP2AXFwyaMBYbcnzG9TdP7Trf2bxVXgC7", 200)
+	// makeBlockIDAtCSV("GhZVPpopX84JrKiNNP2AXFwyaMBYbcnzG9TdP7Trf2bxVXgC7", 200)
+	blockID := getBlockIDFromIndex(868729)
+	fmt.Println("BlockID: ", blockID)
 
 }

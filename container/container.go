@@ -37,6 +37,7 @@ func MakeContainerTypeID(contData []byte) string {
 		numVal := int(subject)
 		transactionID = transactionID + strconv.Itoa(numVal)
 	}
+	transactionID = `"` + transactionID + `"`
 	return transactionID
 }
 
@@ -113,7 +114,7 @@ func FindBlockID(containerData []byte, wanted string) (int, int, string) {
 		}
 		blockIDs = append(blockIDs, stringID)
 		if stringID == wanted {
-			found = i + 1
+			found = i
 		}
 
 	}
@@ -136,7 +137,7 @@ func GetBlockIDFromContainer(contData []byte) (string, bool) {
 
 	var slice []byte
 	switch transactionID {
-	case "000000":
+	case `"000000"`:
 		length := len(contData)
 		check := []int{6, 68, 1253, 1321, 1344}
 		found := false
@@ -160,11 +161,11 @@ func GetBlockIDFromContainer(contData []byte) (string, bool) {
 			investigate(transactionID, contData)
 		}
 		return blockID, true
-	case "000001":
+	case `"000001"`:
 		slice = contData[48:80]
-	case "000002":
+	case `"000002"`:
 		slice = contData[6:38]
-	case "000004":
+	case `"000004"`:
 		slice = contData[6:38]
 	default:
 		return fmt.Sprintf("Unknown Identifier: %s, %s", transactionID, investigate(transactionID, contData)), false

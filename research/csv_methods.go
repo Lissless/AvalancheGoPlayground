@@ -62,7 +62,7 @@ func CheckBlockIDFromIndexAccuracy(startIndex int, numEntries int) {
 }
 
 func MakeBlockIDAtCSV(blockID string, numEntries int) {
-	csvFile, err := os.Create("containerResearchP58.csv")
+	csvFile, err := os.Create("containerResearchBlockIDAt.csv")
 	defer csvFile.Close()
 	if err != nil {
 		log.Fatalf("failed creating file: %s", err)
@@ -103,7 +103,7 @@ func MakeBlockIDAtCSV(blockID string, numEntries int) {
 }
 
 func MakeFindRelevantIDsCSV(blockID string, numEntries int) {
-	csvFile, err := os.Create("containerValidIDsLarge.csv")
+	csvFile, err := os.Create("containerResearchAllRelevantBlockIDs.csv")
 	defer csvFile.Close()
 	if err != nil {
 		log.Fatalf("failed creating file: %s", err)

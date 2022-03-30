@@ -2,10 +2,7 @@ module main.go
 
 go 1.17
 
-require (
-	github.com/ava-labs/avalanchego v1.7.8
-	github.com/mr-tron/base58 v1.2.0
-)
+require github.com/ava-labs/avalanchego v1.7.8
 
 require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
@@ -23,6 +20,7 @@ require (
 	github.com/gorilla/rpc v1.2.0 // indirect
 	github.com/linxGnu/grocksdb v1.6.34 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.11.0 // indirect

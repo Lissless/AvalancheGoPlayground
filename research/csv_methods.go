@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"decode/main.go/container"
+	"main.go/container"
 )
 
 func getExportOrImportType(block map[string]interface{}) string {

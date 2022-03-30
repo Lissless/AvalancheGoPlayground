@@ -1,74 +1,142 @@
 package utxo
 
 import (
-	"bytes"
-	"fmt"
+	"context"
+	"encoding/binary"
 	"math/big"
 
+	"github.com/ava-labs/avalanchego/api"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting"
+	"github.com/ava-labs/avalanchego/utils/rpc"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
 
 type UTXO struct {
-	codecID   string
-	txID      string
-	UTXOIndex string
-	AssetID   string
-	Output    string
+	codecID     uint16
+	txID        string
+	outputIndex int
+	assetID     string
+	output      Output
 }
 
 type Output struct {
-	typeID       string
-	amount       string
-	lockTime     string
-	threshold    string
-	no_addresses string
+	typeID       int
+	amount       big.Int
+	lockTime     big.Int
+	threshold    int
+	no_addresses int
 	addresses    []string
 }
 
-type avaUTXO struct {
-	codecID   bytes.Buffer
-	txID      bytes.Buffer
-	UTXOIndex bytes.Buffer
-	AssetID   bytes.Buffer
-	Output    Output
+func GetRewardUTXOs(txID string) ([][]byte, error) {
+	requester := rpc.NewEndpointRequester("https://api.avax.network", "/ext/P", "platform")
+	ctx := context.Background()
+	resp := new(platformvm.GetRewardUTXOsReply)
+	ID, err := ids.FromString(txID)
+	if err != nil {
+		return nil, err
+	}
+	args := api.GetTxArgs{
+		TxID:     ID,
+		Encoding: formatting.CB58,
+	}
+	requester.SendRequest(ctx, "getRewardUTXOs", args, resp)
+	// from Avalanche Go
+	utxos := make([][]byte, len(resp.UTXOs))
+	for i, utxoStr := range resp.UTXOs {
+		utxoBytes, err := formatting.Decode(resp.Encoding, utxoStr)
+		if err != nil {
+			return nil, err
+		}
+		utxos[i] = utxoBytes
+	}
+	return utxos, err
+
 }
 
-type avaOutput struct {
-	typeID       string
-	amount       bytes.Buffer
-	amountValue  string //big.Int --> https://medium.com/orbs-network/big-integers-in-go-14534d0e490d
-	lockTime     bytes.Buffer
-	threshold    bytes.Buffer
-	no_addresses bytes.Buffer
-	addresses    []string
+func makeAddressArray(addressBytes []byte) ([]string, error) {
+	numAddresses := len(addressBytes) / 20
+	addrStringArr := make([]string, numAddresses)
+	for i := 0; i < numAddresses; i++ {
+		da, err := formatting.FormatAddress("P", constants.GetHRP(1), addressBytes[(i*20):((i+1)*20)])
+		if err != nil {
+			return nil, err
+		}
+		addrStringArr[i] = da
+	}
+
+	return addrStringArr, nil
 }
 
-// This is for a cb58 string
-func decodeUTXO(utxo string) { //} (avax.UTXO){
-	utxoBytes, _ := formatting.Decode(formatting.CB58, utxo)
-	codecID := utxoBytes[:2]
-	transactionID := utxoBytes[2:34]
-	outputIndex := utxoBytes[34:38]
-	assetID := utxoBytes[38:70]
-	utxoOutput := utxoBytes[70:]
+func FormatUTXO(utxoBytes []byte) (*UTXO, error) {
+	utxo := new(UTXO)
 
-	typeID := utxoOutput[:4]
-	amount := utxoOutput[4:12]
-	locktime := utxoOutput[12:20]
-	threshold := utxoOutput[20:24]
-	addressAmount := utxoOutput[24:28]
-	addresses := utxoOutput[28:]
-	//test := utxoOutput[48:]
+	codecIDBytes := utxoBytes[:2]
+	transactionIDBytes := utxoBytes[2:34]
+	outputIndexBytes := utxoBytes[34:38]
+	assetIDBytes := utxoBytes[38:70]
+	utxoOutputBytes := utxoBytes[70:]
 
-	da, ee := formatting.FormatAddress("P", constants.GetHRP(1), addresses)
-	amountInt := new(big.Int)
-	amountInt.SetBytes(amount)
-	fmt.Println("decoded address: ", da)
-	fmt.Println("decoded address error: ", ee)
-	fmt.Println("The amount: ", amountInt)
+	typeIDBytes := utxoOutputBytes[:4]
+	amountBytes := utxoOutputBytes[4:12]
+	locktimeBytes := utxoOutputBytes[12:20]
+	thresholdBytes := utxoOutputBytes[20:24]
+	addressAmountBytes := utxoOutputBytes[24:28]
+	addressesBytes := utxoOutputBytes[28:]
 
-	fmt.Println(assetID, codecID, transactionID, outputIndex, utxoOutput)
-	fmt.Println(typeID, amount, locktime, threshold, addressAmount, addresses)
+	// make codecID
+	codecID := binary.LittleEndian.Uint16(codecIDBytes)
+	utxo.codecID = codecID
+
+	// make transactionID
+	transactionID, err := ids.ToID(transactionIDBytes)
+	if err != nil {
+		return nil, err
+	}
+	utxo.txID = transactionID.String()
+
+	// make outputIndex
+	outputIndex := int(binary.BigEndian.Uint32(outputIndexBytes))
+	utxo.outputIndex = outputIndex
+
+	// make assetID
+	assetID, err := ids.ToID(assetIDBytes)
+	if err != nil {
+		return nil, err
+	}
+	utxo.assetID = assetID.String()
+
+	// make TypeID
+	typeID := int(binary.BigEndian.Uint32(typeIDBytes))
+	utxo.output.typeID = typeID
+
+	// make Amount
+	amount := new(big.Int)
+	amount.SetBytes(amountBytes)
+	utxo.output.amount = *amount
+
+	// make Locktime
+	locktime := new(big.Int)
+	locktime.SetBytes(locktimeBytes)
+	utxo.output.lockTime = *locktime
+
+	// make Threshold
+	threshold := int(binary.BigEndian.Uint32(thresholdBytes))
+	utxo.output.threshold = threshold
+
+	// make Address Amount
+	addressAmount := int(binary.BigEndian.Uint32(addressAmountBytes))
+	utxo.output.no_addresses = addressAmount
+
+	// make Addresses
+	addresses, err := makeAddressArray(addressesBytes)
+	if err != nil {
+		return nil, err
+	}
+	utxo.output.addresses = addresses
+
+	return utxo, nil
 
 }

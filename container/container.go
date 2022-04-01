@@ -87,9 +87,56 @@ func FindAllValidBlockIDs(containerData []byte) string {
 	return valid
 }
 
+func GetTransaction(transactionID string) api.GetTxReply {
+	requester := rpc.NewEndpointRequester("https://api.avax.network", "/ext/P", "platform")
+	ctx := context.Background()
+	out := new(api.GetTxReply)
+	ID, err := ids.FromString(transactionID)
+	if err != nil {
+		return *out
+	}
+	args := api.GetTxArgs{
+		TxID:     ID,
+		Encoding: formatting.JSON,
+	}
+	requester.SendRequest(ctx, "getTx", args, out)
+	return *out
+}
+
+func FindAllValidTransactionIDs(containerData []byte) string {
+	length := len(containerData)
+	if length < 32 {
+		fmt.Println("invalid length for possible BlockID")
+		return ""
+	}
+	var validBlockIDs []string
+	for i := 0; i < length-31; i++ {
+		check := containerData[i:(i + 32)]
+		stringID, err := formatting.EncodeWithChecksum(formatting.CB58, check)
+		if err != nil {
+			fmt.Println("fatal error")
+			break
+		}
+		time.Sleep((1 * time.Second))
+		fmt.Println("Processing possibility number ", (i + 1), " of ", (length - 31))
+		resp := GetTransaction(stringID)
+		if resp.Tx != nil {
+			validBlockIDs = append(validBlockIDs, stringID)
+		}
+	}
+
+	valid := ""
+	for i := 0; i < len(validBlockIDs); i++ {
+		valid = valid + validBlockIDs[i] + ", "
+	}
+
+	return valid
+}
+
 func investigate(transactionID string, contData []byte) string {
 	fmt.Println(`Block ID not found for ID "` + transactionID + `", Looking for BlockID Location`)
 	blockID := FindAllValidBlockIDs(contData)
+	// TODO: Account for multiple Block ID's being found, add to accuracy function
 	blockID = blockID[:(len(blockID) - 1)]
 	_, appearedAt, _ := FindBlockID(contData, blockID)
 	fmt.Println("Block ID: ", blockID, " Found at Index: ", appearedAt)

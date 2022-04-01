@@ -132,3 +132,34 @@ func MakeFindRelevantIDsCSV(blockID string, numEntries int) {
 	}
 
 }
+
+func MakeFindRelevantTransIDsCSV(blockID string, numEntries int) {
+	csvFile, err := os.Create("containerResearchAllRelevantTransIDs.csv")
+	defer csvFile.Close()
+	if err != nil {
+		log.Fatalf("failed creating file: %s", err)
+	}
+
+	csvwriter := csv.NewWriter(csvFile)
+	defer csvwriter.Flush()
+	initialRow := []string{"Block Height", "Container ID", "Found Valid Transaction IDs"}
+	if err := csvwriter.Write(initialRow); err != nil {
+		log.Fatalln("error writing record to file", err)
+	}
+
+	for i := 0; i < numEntries; i++ {
+		resp := container.GetBlock(blockID)
+		block := resp.Block.(map[string]interface{})
+		height := block["height"].(float64)
+		containerID, cont := container.DecodeContainer(height)
+		fmt.Println("Doing entry ", (i + 1), " of ", numEntries)
+		valid := container.FindAllValidTransactionIDs(cont.Bytes)
+		row := []string{fmt.Sprintf("%f", height), containerID, valid}
+		if err := csvwriter.Write(row); err != nil {
+			log.Fatalln("error writing record to file", err)
+		}
+
+		blockID = block["parentID"].(string)
+	}
+
+}

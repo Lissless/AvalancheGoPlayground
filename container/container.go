@@ -183,11 +183,11 @@ func GetBlockIDFromContainer(contData []byte) (string, bool) {
 	transactionID := MakeContainerTypeID(contData)
 
 	var slice []byte
+	length := len(contData)
+	found := false
 	switch transactionID {
 	case `"000000"`:
-		length := len(contData)
 		check := []int{6, 68, 1253, 1321, 1344}
-		found := false
 		var blockID string
 		var oof error
 		for _, val := range check {
@@ -209,7 +209,27 @@ func GetBlockIDFromContainer(contData []byte) (string, bool) {
 		}
 		return blockID, true
 	case `"000001"`:
-		slice = contData[48:80]
+		check := []int{6, 48}
+		var blockID string
+		var oof error
+		for _, val := range check {
+			if (val + 32) < length {
+				slice = contData[val:(val + 32)]
+				blockID, oof = formatting.EncodeWithChecksum(formatting.CB58, slice)
+				if oof != nil {
+					return "Encoding Unsuccessful", false
+				}
+				resp := GetBlock(blockID)
+				if resp.Block != nil {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			investigate(transactionID, contData)
+		}
+		return blockID, true
 	case `"000002"`:
 		slice = contData[6:38]
 	case `"000004"`:

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"main.go/container"
+	"github.com/Lissless/AvalancheGoPlayground/container"
 )
 
 func getExportOrImportType(block map[string]interface{}) string {
@@ -175,7 +175,7 @@ func PrintBlockTxType(index float64, numEntries int, intervals int, stop int) {
 
 	csvwriter := csv.NewWriter(csvFile)
 	defer csvwriter.Flush()
-	initialRow := []string{"index Start", "Index End", "Has Tx Data", "Has Tx ID", "Empty"}
+	initialRow := []string{"index Start", "Index End", "Has Tx Data", "Has Tx ID", "Empty", "RelevantBlkID"}
 	if err := csvwriter.Write(initialRow); err != nil {
 		log.Fatalln("error writing record to file", err)
 	}
@@ -200,6 +200,10 @@ func PrintBlockTxType(index float64, numEntries int, intervals int, stop int) {
 				utx := tx["unsignedTx"].(map[string]interface{})
 				for k := range utx {
 					if k == "txID" {
+						row := []string{"N/A", "N/A", "N/A", "N/A", "N/A", blockID}
+						if err := csvwriter.Write(row); err != nil {
+							log.Fatalln("error writing record to file", err)
+						}
 						txIDPresent++
 						break
 					}
@@ -212,7 +216,7 @@ func PrintBlockTxType(index float64, numEntries int, intervals int, stop int) {
 			blockID = block["parentID"].(string)
 		}
 
-		row := []string{fmt.Sprintf("%f", index), fmt.Sprintf("%d", int(index)+numEntries), fmt.Sprintf("%d", txIDPresent), fmt.Sprintf("%d", txIDNotPresent), fmt.Sprintf("%d", empty)}
+		row := []string{fmt.Sprintf("%f", index), fmt.Sprintf("%d", int(index)+numEntries), fmt.Sprintf("%d", txIDPresent), fmt.Sprintf("%d", txIDNotPresent), fmt.Sprintf("%d", empty), "N/A"}
 		if err := csvwriter.Write(row); err != nil {
 			log.Fatalln("error writing record to file", err)
 		}

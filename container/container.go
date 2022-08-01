@@ -14,6 +14,14 @@ import (
 	"github.com/ava-labs/avalanchego/utils/rpc"
 )
 
+func GetIndex() *uint64 {
+	ctx := context.Background()
+	requester := rpc.NewEndpointRequester("https://api.avax.network", "/ext/P", "platform")
+	res := new(uint64)
+	requester.SendRequest(ctx, "getHeight", struct{}{}, res)
+	return res
+}
+
 func DecodeContainer(height float64) (string, indexer.Container) {
 
 	client := indexer.NewClient("https://indexer-demo.avax.network", "/ext/index/P/block")
@@ -141,6 +149,14 @@ func investigate(transactionID string, contData []byte) string {
 	_, appearedAt, _ := FindBlockID(contData, blockID)
 	fmt.Println("Block ID: ", blockID, " Found at Index: ", appearedAt)
 	return fmt.Sprintf("Block ID: %s Found at Index: %d", blockID, appearedAt)
+}
+
+func HexTo58Converter(hex string) (string, error) {
+	bytes, err := formatting.Decode(formatting.Hex, hex)
+	if err != nil {
+		return "yikes", nil
+	}
+	return formatting.EncodeWithChecksum(formatting.CB58, bytes)
 }
 
 func FindBlockID(containerData []byte, wanted string) (int, int, string) {

@@ -1,4 +1,4 @@
-module main.go
+module github.com/Lissless/AvalancheGoPlayground
 
 go 1.17
 
